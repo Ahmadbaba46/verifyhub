@@ -40,11 +40,15 @@ export async function completeFunding(providerRef: string, paidKobo: number) {
       key: `fund:${providerRef}`,
     });
 
-    if (s.bonus_tiers.enabled) {
-      const bonus = bonusFor(paidKobo, s.bonus_tiers.tiers);
-      if (bonus > 0) {
-        await credit(tx, { userId: req.user_id, amountKobo: bonus, kind: 'bonus', reference: providerRef, key: `bonus:${providerRef}` });
-      }
+    // Bonus: a per-client API agreement overrides the global tiers when present.
+    let bonus = s.bonus_tiers.enabled ? bonusFor(paidKobo, s.bonus_tiers.tiers) : 0;
+    const cb = (await tx.query(`SELECT bonus FROM api_clients WHERE user_id = $1 AND status = 'approved'`, [req.user_id])).rows[0]?.bonus;
+    if (cb && cb.type === 'topup_percent' && paidKobo >= (cb.min_kobo ?? 0)) {
+      bonus = Math.floor((paidKobo * (cb.percent ?? 0)) / 100);
+      if (cb.max_kobo) bonus = Math.min(bonus, cb.max_kobo);
+    }
+    if (bonus > 0) {
+      await credit(tx, { userId: req.user_id, amountKobo: bonus, kind: 'bonus', reference: providerRef, key: `bonus:${providerRef}` });
     }
 
     // Referral reward: only on the friend's first paid top-up that meets the minimum.

@@ -8,6 +8,7 @@ export type Settings = {
   referral: { enabled: boolean; reward_kobo: number; min_first_topup_kobo: number; max_rewards: number };
   bonus_tiers: { enabled: boolean; tiers: { min_kobo: number; percent: number }[] };
   taxpayer_types: string[];
+  api: { rpm_limit: number; max_keys: number; daily_cap_kobo: number | null; require_ip_allowlist: boolean; allow_test: boolean; idempotency_hours: number };
 };
 
 const DEFAULTS: Settings = {
@@ -17,6 +18,7 @@ const DEFAULTS: Settings = {
   referral: { enabled: true, reward_kobo: 20000, min_first_topup_kobo: 100000, max_rewards: 20 },
   bonus_tiers: { enabled: true, tiers: [] },
   taxpayer_types: ['Individual'],
+  api: { rpm_limit: 60, max_keys: 5, daily_cap_kobo: null, require_ip_allowlist: true, allow_test: true, idempotency_hours: 24 },
 };
 
 export async function getSettings(tx?: Tx): Promise<Settings> {

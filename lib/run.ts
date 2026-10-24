@@ -7,12 +7,12 @@ import { getSettings } from './settings';
 export class ServiceUnavailable extends Error {}
 export { InsufficientFunds };
 
-export type Channel = 'web' | 'telegram';
+export type Channel = 'web' | 'telegram' | 'api';
 
 export async function getService(key: string) {
   const { rows } = await query('SELECT * FROM services WHERE key = $1', [key]);
   return rows[0] as
-    | { key: string; label: string; enabled: boolean; web_enabled: boolean; telegram_enabled: boolean; paused_message: string }
+    | { key: string; label: string; enabled: boolean; web_enabled: boolean; telegram_enabled: boolean; api_enabled: boolean; paused_message: string }
     | undefined;
 }
 
@@ -24,8 +24,8 @@ export async function getPrice(key: string): Promise<number> {
 
 export function assertAvailable(svc: Awaited<ReturnType<typeof getService>>, channel: Channel) {
   if (!svc) throw new ServiceUnavailable('Unknown service');
-  const on = svc.enabled && (channel === 'web' ? svc.web_enabled : svc.telegram_enabled);
-  if (!on) throw new ServiceUnavailable(svc.paused_message);
+  const channelOn = channel === 'web' ? svc.web_enabled : channel === 'telegram' ? svc.telegram_enabled : svc.api_enabled;
+  if (!(svc.enabled && channelOn)) throw new ServiceUnavailable(svc.paused_message);
 }
 
 export type ExecOutcome<T> = { found: true; data: T } | { found: false; reason?: string };

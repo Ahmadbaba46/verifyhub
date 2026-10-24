@@ -3,8 +3,8 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { call } from './client';
 
-const USER = [['/dashboard', 'Dashboard'], ['/wallet', 'Wallet'], ['/nin', 'NIN validation'], ['/match', 'NIN & passport match'], ['/tin', 'TIN finder'], ['/history', 'History'], ['/telegram', 'Telegram bot']];
-const ADMIN = [['/admin', 'Overview'], ['/admin/services', 'Services & prices'], ['/admin/users', 'Users'], ['/admin/transactions', 'Transactions']];
+const USER = [['/dashboard', 'Dashboard'], ['/wallet', 'Wallet'], ['/nin', 'NIN validation'], ['/match', 'NIN & passport match'], ['/tin', 'TIN finder'], ['/api-keys', 'API keys'], ['/api-usage', 'API usage'], ['/api-docs', 'API docs'], ['/history', 'History'], ['/telegram', 'Telegram bot']];
+const ADMIN = [['/admin', 'Overview'], ['/admin/services', 'Services & prices'], ['/admin/api-clients', 'API clients'], ['/admin/api-metrics', 'API metrics'], ['/admin/users', 'Users'], ['/admin/transactions', 'Transactions']];
 
 export default function Sidebar({ isAdmin, balance, name }: { isAdmin: boolean; balance: string; name: string }) {
   const path = usePathname();
