@@ -12,7 +12,7 @@ export default async function Page() {
         {user.telegram_chat_id ? <p><span className="pill">Linked</span> Your Telegram is connected. Send /start to the bot to begin.</p> : (
           <>
             {!funded && <div className="promo">Fund your wallet first. The bot only runs checks when your wallet can pay for them.</div>}
-            <ol><li>Get a link code below.</li><li>Open the bot in Telegram and send the code.</li><li>Use /nin, /match or /tin.</li></ol>
+            <ol><li>Get a link code below.</li><li>Open the bot in Telegram and send the code.</li><li>Use /nin, /bvn, /match or /tin.</li></ol>
             <TelegramLink botName={process.env.TELEGRAM_BOT_USERNAME} />
           </>
         )}

@@ -3,7 +3,7 @@ import { maskTail, randomCode } from './crypto';
 import { query, withTx } from './db';
 import { InsufficientFunds } from './ledger';
 import { naira } from './money';
-import { lookupNin, lookupPassport, lookupNinPassport, lookupTin } from './providers';
+import { lookupBvn, lookupNin, lookupPassport, lookupNinPassport, lookupTin } from './providers';
 import { assertAvailable, getPrice, getService, runPaidCheck, ServiceUnavailable } from './run';
 import { getSettings } from './settings';
 
@@ -32,6 +32,7 @@ export async function createLinkCode(userId: string) {
 
 const MENU = `What would you like to do?
 /nin  NIN validation
+/bvn  BVN validation
 /match  NIN & passport match
 /tin  Tax ID (TIN) finder
 /wallet  Balance and funding
@@ -48,10 +49,10 @@ const clearStep = (chatId: number) => query('DELETE FROM telegram_state WHERE ch
 
 async function userForChat(chatId: number) {
   const { rows } = await query(
-    `SELECT u.id, u.name, u.status, w.balance_kobo FROM users u JOIN wallets w ON w.user_id = u.id WHERE u.telegram_chat_id = $1`,
+    `SELECT u.id, u.name, u.status, u.free_checks, w.balance_kobo FROM users u JOIN wallets w ON w.user_id = u.id WHERE u.telegram_chat_id = $1`,
     [chatId],
   );
-  return rows[0] as { id: string; name: string; status: string; balance_kobo: string } | undefined;
+  return rows[0] as { id: string; name: string; status: string; free_checks: boolean; balance_kobo: string } | undefined;
 }
 
 /** Wallet must cover the price before we ask for any personal details. */
@@ -104,18 +105,24 @@ export async function handleMessage(chatId: number, rawText: string) {
   if (/^\/wallet\b/i.test(text)) return send(chatId, `Wallet balance: ${naira(user.balance_kobo)}\nFund it: ${appUrl()}/wallet`);
 
   if (/^\/nin\b/i.test(text)) {
-    if (!(await guardFunds(chatId, user, 'nin', 'nin_validate'))) return;
+    if (!user.free_checks && !(await guardFunds(chatId, user, 'nin', 'nin_validate'))) return;
     const inline = text.replace(/^\/nin\s*/i, '');
     if (!inline) { await setStep(chatId, 'nin'); return send(chatId, `Send the 11-digit NIN. This costs ${naira(await getPrice('nin_validate'))}.`); }
-    return runNin(chatId, user.id, inline);
+    return runNin(chatId, user.id, inline, user.free_checks);
+  }
+  if (/^\/bvn\b/i.test(text)) {
+    if (!user.free_checks && !(await guardFunds(chatId, user, 'bvn', 'bvn_validate'))) return;
+    const inline = text.replace(/^\/bvn\s*/i, '');
+    if (!inline) { await setStep(chatId, 'bvn'); return send(chatId, `Send the 11-digit BVN. This costs ${naira(await getPrice('bvn_validate'))}.`); }
+    return runBvn(chatId, user.id, inline, user.free_checks);
   }
   if (/^\/match\b/i.test(text)) {
-    if (!(await guardFunds(chatId, user, 'match', 'match_check'))) return;
+    if (!user.free_checks && !(await guardFunds(chatId, user, 'match', 'match_check'))) return;
     await setStep(chatId, 'match');
     return send(chatId, `Send 4 lines:\n1) NIN\n2) Date of birth on NIN (YYYY-MM-DD)\n3) Passport number\n4) Date of birth on passport (YYYY-MM-DD)\n\nThis costs ${naira(await getPrice('match_check'))}.`);
   }
   if (/^\/tin\b/i.test(text)) {
-    if (!(await guardFunds(chatId, user, 'tin', 'tin_lookup'))) return;
+    if (!user.free_checks && !(await guardFunds(chatId, user, 'tin', 'tin_lookup'))) return;
     const types = (await getSettings()).taxpayer_types;
     await setStep(chatId, 'tin_type');
     return send(chatId, `Choose the taxpayer type (send the number):\n${types.map((t, i) => `${i + 1}) ${t}`).join('\n')}`);
@@ -124,8 +131,9 @@ export async function handleMessage(chatId: number, rawText: string) {
   const st = (await query('SELECT step, data FROM telegram_state WHERE chat_id = $1 AND updated_at > now() - interval \'15 minutes\'', [chatId])).rows[0];
   if (!st) return send(chatId, MENU);
 
-  if (st.step === 'nin') return runNin(chatId, user.id, text);
-  if (st.step === 'match') return runMatch(chatId, user.id, text);
+  if (st.step === 'nin') return runNin(chatId, user.id, text, user.free_checks);
+  if (st.step === 'bvn') return runBvn(chatId, user.id, text, user.free_checks);
+  if (st.step === 'match') return runMatch(chatId, user.id, text, user.free_checks);
   if (st.step === 'tin_type') {
     const types = (await getSettings()).taxpayer_types;
     const i = Number(text) - 1;
@@ -133,7 +141,7 @@ export async function handleMessage(chatId: number, rawText: string) {
     await setStep(chatId, 'tin_id', { type: types[i] });
     return send(chatId, `Send the NIN (11 digits) or the RC number (like RC123456) for a ${types[i]}.`);
   }
-  if (st.step === 'tin_id') return runTin(chatId, user.id, st.data.type, text);
+  if (st.step === 'tin_id') return runTin(chatId, user.id, st.data.type, text, user.free_checks);
   return send(chatId, MENU);
 }
 
@@ -151,11 +159,11 @@ async function guarded(chatId: number, fn: () => Promise<string>) {
 
 const ymd = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s);
 
-function runNin(chatId: number, userId: string, input: string) {
+function runNin(chatId: number, userId: string, input: string, free: boolean) {
   const nin = input.replace(/\s+/g, '');
   if (!/^\d{11}$/.test(nin)) return send(chatId, 'A NIN has 11 digits. Send it again, or /cancel.');
   return guarded(chatId, async () => {
-    const out = await runPaidCheck({ userId, serviceKey: 'nin', priceKey: 'nin_validate', channel: 'telegram', inputHint: `NIN ${maskTail(nin)}`, exec: () => lookupNin(nin) });
+    const out = await runPaidCheck({ userId, serviceKey: 'nin', priceKey: 'nin_validate', channel: 'telegram', inputHint: `NIN ${maskTail(nin)}`, exec: () => lookupNin(nin), free });
     if (out.notFound) return 'No record found for this NIN. You were not charged.';
     if (out.error) return out.error;
     const d = out.data!;
@@ -163,7 +171,19 @@ function runNin(chatId: number, userId: string, input: string) {
   });
 }
 
-function runMatch(chatId: number, userId: string, input: string) {
+function runBvn(chatId: number, userId: string, input: string, free: boolean) {
+  const bvn = input.replace(/\s+/g, '');
+  if (!/^\d{11}$/.test(bvn)) return send(chatId, 'A BVN has 11 digits. Send it again, or /cancel.');
+  return guarded(chatId, async () => {
+    const out = await runPaidCheck({ userId, serviceKey: 'bvn', priceKey: 'bvn_validate', channel: 'telegram', inputHint: `BVN ${maskTail(bvn)}`, exec: () => lookupBvn(bvn), free });
+    if (out.notFound) return 'No record found for this BVN. You were not charged.';
+    if (out.error) return out.error;
+    const d = out.data!;
+    return `BVN found (${out.reference}).\n${d.firstName} ${d.middleName} ${d.lastName}\nBorn ${d.dateOfBirth} · ${d.gender}\nPhone: ${d.phoneNumber || '-'}`;
+  });
+}
+
+function runMatch(chatId: number, userId: string, input: string, free: boolean) {
   const [nin, ninDob, pp, ppDob] = input.split(/[\n,]+/).map((s) => s.trim());
   const ninDigits = (nin ?? '').replace(/\s+/g, '');
   if (!/^\d{11}$/.test(ninDigits) || !ymd(ninDob ?? '') || !/^[A-Za-z]\d{8}$/.test(pp ?? '') || !ymd(ppDob ?? '')) {
@@ -172,7 +192,7 @@ function runMatch(chatId: number, userId: string, input: string) {
   return guarded(chatId, async () => {
     let why = '';
     const out = await runPaidCheck({
-      userId, serviceKey: 'match', priceKey: 'match_check', channel: 'telegram',
+      userId, serviceKey: 'match', priceKey: 'match_check', channel: 'telegram', free,
       inputHint: `NIN ${maskTail(ninDigits)} / passport ${maskTail(pp.toUpperCase())}`,
       exec: async () => {
         const n = await lookupNin(ninDigits);
@@ -192,13 +212,13 @@ function runMatch(chatId: number, userId: string, input: string) {
   });
 }
 
-function runTin(chatId: number, userId: string, type: string, input: string) {
+function runTin(chatId: number, userId: string, type: string, input: string, free: boolean) {
   const id = input.replace(/\s+/g, '').toUpperCase();
   const isNin = /^\d{11}$/.test(id);
   if (!isNin && !/^(RC)?\d{4,9}$/.test(id)) return send(chatId, 'Send an 11-digit NIN or an RC number like RC123456. Or /cancel.');
   return guarded(chatId, async () => {
     const out = await runPaidCheck({
-      userId, serviceKey: 'tin', priceKey: 'tin_lookup', channel: 'telegram',
+      userId, serviceKey: 'tin', priceKey: 'tin_lookup', channel: 'telegram', free,
       inputHint: isNin ? `NIN ${maskTail(id)}` : `RC ${id}`,
       exec: () => lookupTin(isNin ? { nin: id, type } : { rc: id, type }),
     });

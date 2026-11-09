@@ -14,7 +14,7 @@ const ADMIN = [
   ['/admin/api-metrics', 'API metrics'], ['/admin/users', 'Users'], ['/admin/transactions', 'Transactions'],
 ];
 
-export default function Sidebar({ isAdmin, balance, name }: { isAdmin: boolean; balance: string; name: string }) {
+export default function Sidebar({ isAdmin, freeChecks, balance, name }: { isAdmin: boolean; freeChecks?: boolean; balance: string; name: string }) {
   const path = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -34,7 +34,7 @@ export default function Sidebar({ isAdmin, balance, name }: { isAdmin: boolean; 
           <>
             <div className="sec">Admin console</div>
             {ADMIN.map(item)}
-            <div className="sec">Services · free for admins</div>
+            <div className="sec">Services{freeChecks ? ' · free for you' : ''}</div>
             {FEATURES.map(item)}
           </>
         ) : (

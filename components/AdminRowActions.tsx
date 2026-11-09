@@ -3,7 +3,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { call } from './client';
 
-export function UserActions({ id, status, self }: { id: string; status: string; self: boolean }) {
+export function UserActions({ id, status, self, free }: { id: string; status: string; self: boolean; free: boolean }) {
   const router = useRouter();
   const [err, setErr] = useState('');
   async function act(body: Record<string, unknown>) {
@@ -19,8 +19,9 @@ export function UserActions({ id, status, self }: { id: string; status: string; 
     await act({ action: 'credit', amount, reason });
   }
   return (
-    <span>
-      <button className="btn ghost" style={{ margin: '0 6px 0 0', padding: '4px 10px' }} onClick={credit}>Credit</button>
+    <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
+      <button className="btn ghost" style={{ margin: 0, padding: '4px 10px' }} onClick={credit}>Credit</button>
+      <button className="btn ghost" style={{ margin: 0, padding: '4px 10px' }} onClick={() => act({ action: 'set_free', free: !free })} title="Run checks without a wallet charge">{free ? 'Remove free' : 'Make free'}</button>
       {!self && <button className={'btn ' + (status === 'active' ? 'danger' : 'ghost')} style={{ margin: 0, padding: '4px 10px' }} onClick={() => act({ action: status === 'active' ? 'suspend' : 'reactivate' })}>{status === 'active' ? 'Suspend' : 'Reactivate'}</button>}
       {err && <div className="alert err">{err}</div>}
     </span>

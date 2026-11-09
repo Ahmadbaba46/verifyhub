@@ -17,7 +17,7 @@ export const POST = authed(async (req, user) => {
     channel: 'web',
     inputHint: `BVN ${maskTail(bvn)}`,
     exec: () => lookupBvn(bvn, user.email),
-    free: user.role === 'admin',
+    free: user.free_checks,
   });
   if (out.notFound) return json({ found: false, message: 'No record found for this BVN. You were not charged.' });
   if (out.error) return json({ error: out.error }, 502);

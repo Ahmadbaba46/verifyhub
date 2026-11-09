@@ -21,6 +21,7 @@ export type SessionUser = {
   tier: string;
   referral_code: string;
   balance_kobo: number;
+  free_checks: boolean;
   telegram_chat_id: string | null;
 };
 
@@ -53,7 +54,7 @@ export async function getUser(): Promise<SessionUser | null> {
   try {
     const { payload } = await jwtVerify(token, secret());
     const { rows } = await query(
-      `SELECT u.id, u.name, u.email, u.role, u.tier, u.referral_code, u.status, u.telegram_chat_id::text AS telegram_chat_id, w.balance_kobo
+      `SELECT u.id, u.name, u.email, u.role, u.tier, u.referral_code, u.status, u.free_checks, u.telegram_chat_id::text AS telegram_chat_id, w.balance_kobo
        FROM users u JOIN wallets w ON w.user_id = u.id WHERE u.id = $1`,
       [payload.sub],
     );

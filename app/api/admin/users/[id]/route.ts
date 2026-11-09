@@ -8,6 +8,7 @@ const Body = z.discriminatedUnion('action', [
   z.object({ action: z.literal('credit'), amount: z.union([z.string(), z.number()]), reason: z.string().trim().min(3).max(200) }),
   z.object({ action: z.literal('suspend') }),
   z.object({ action: z.literal('reactivate') }),
+  z.object({ action: z.literal('set_free'), free: z.boolean() }),
 ]);
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -28,6 +29,13 @@ export const POST = (req: Request, ctx: Ctx) =>
             meta: { by: admin.id, reason: b.reason },
           });
           await tx.query(`INSERT INTO audit_log (actor_id, action, detail) VALUES ($1, 'wallet.credit', $2)`, [admin.id, JSON.stringify({ user: id, kobo, reason: b.reason })]);
+        });
+        return json({ ok: true });
+      }
+      if (b.action === 'set_free') {
+        await withTx(async (tx) => {
+          await tx.query(`UPDATE users SET free_checks = $2 WHERE id = $1`, [id, b.free]);
+          await tx.query(`INSERT INTO audit_log (actor_id, action, detail) VALUES ($1, 'user.set_free', $2)`, [admin.id, JSON.stringify({ user: id, free: b.free })]);
         });
         return json({ ok: true });
       }

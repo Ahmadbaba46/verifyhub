@@ -8,7 +8,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const user = await requireUser();
   return (
     <div className="shell">
-      <Sidebar isAdmin={user.role === 'admin'} balance={naira(user.balance_kobo)} name={user.name} />
+      <Sidebar isAdmin={user.role === 'admin'} freeChecks={user.free_checks} balance={naira(user.balance_kobo)} name={user.name} />
       <main className="main">{children}</main>
     </div>
   );

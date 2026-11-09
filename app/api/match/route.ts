@@ -51,7 +51,7 @@ export const POST = authed(async (req, user) => {
       }
       return { found: true, data: { nin: nin.data, passport: passport.data, comparison: compareIdentities(nin.data, passport.data) } };
     },
-    free: user.role === 'admin',
+    free: user.free_checks,
   });
 
   if (out.notFound) {

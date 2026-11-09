@@ -15,8 +15,8 @@ export default async function Page() {
     <>
       <h1>Hello, {user.name.split(' ')[0]}</h1>
       <p className="muted">Wallet balance <b>{naira(user.balance_kobo)}</b> · Tier {user.tier}</p>
-      {user.role === 'admin'
-        ? <div className="promo">You&rsquo;re an admin — checks run free for testing, no wallet funding needed.</div>
+      {user.free_checks
+        ? <div className="promo">Your account runs checks free for testing — no wallet funding needed.</div>
         : user.balance_kobo < 50000 && <div className="promo">Your balance is low. <Link href="/wallet">Fund your wallet</Link> to keep running checks.</div>}
       <div className="grid" style={{ marginTop: 16 }}>
         {svc.map((s) => (

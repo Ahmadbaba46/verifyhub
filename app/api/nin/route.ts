@@ -17,7 +17,7 @@ export const POST = authed(async (req, user) => {
     channel: 'web',
     inputHint: `NIN ${maskTail(nin)}`,
     exec: () => lookupNin(nin),
-    free: user.role === 'admin',
+    free: user.free_checks,
   });
   if (out.notFound) return json({ found: false, message: 'No record found for this NIN. You were not charged.' });
   if (out.error) return json({ error: out.error }, 502);
