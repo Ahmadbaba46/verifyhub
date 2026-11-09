@@ -1,7 +1,7 @@
 import { apiJson, authenticate, rejectInvalid } from '@/lib/apiauth';
 import { runApiCheck } from '@/lib/apirun';
 import { compareIdentities } from '@/lib/compare';
-import { lookupNin, lookupPassport } from '@/lib/providers';
+import { lookupNin, lookupPassport, lookupNinPassport } from '@/lib/providers';
 
 const ENDPOINT = 'POST /v1/match';
 const isDate = (s: unknown) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
@@ -33,7 +33,9 @@ export async function POST(req: Request) {
       const n = await lookupNin(nin);
       if (!n.found) return { found: false, reason: 'No NIN record matches these details.' };
       if (n.data.dob !== ninDob) return { found: false, reason: 'The date of birth does not match the NIN record.' };
-      const p = await lookupPassport(passport, passportDob);
+      const p = process.env.NIS_BASE
+        ? await lookupNinPassport(nin, passport, passportDob)
+        : await lookupPassport(passport, passportDob);
       if (!p.found) return { found: false, reason: 'The NIN was found but no passport record matches.' };
       return { found: true, data: compareIdentities(n.data, p.data) };
     },

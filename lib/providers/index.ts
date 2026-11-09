@@ -1,59 +1,49 @@
-import { Identity, Lookup, ProviderError, TinRecord } from './types';
+import { Identity, Lookup, ProviderError, TinRecord, BvnRecord } from './types';
 import { mockNin, mockPassport, mockTin } from './mock';
+import { possapNinLookup } from './possap';
+import { renmoneyBvnLookup } from './renmoney';
+import { nisPassportLookup } from './nis';
 
 /**
- * Generic JSON-over-HTTP adapter.
+ * Provider layer — live adapters with mock fallback.
  *
- * Your real providers each have their own request and response shapes. When you pick them, change ONLY the
- * `toRequest` / `fromResponse` functions below so they return the normalised types in ./types. Nothing else
- * in the app needs to change.
+ * Each provider checks its own env vars. If the required vars are absent the
+ * mock is used instead, so the app works out of the box for development.
  */
-async function call(name: string, urlEnv: string, keyEnv: string, body: unknown): Promise<any> {
-  const url = process.env[urlEnv];
-  const key = process.env[keyEnv];
-  if (!url || !key) return null; // not configured -> caller falls back to mock
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 25_000);
-  try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
-      body: JSON.stringify(body),
-      signal: ctrl.signal,
-    });
-    if (res.status === 404) return { __notFound: true };
-    if (!res.ok) throw new ProviderError(`${name} provider returned ${res.status}`, name);
-    return await res.json();
-  } catch (err) {
-    if (err instanceof ProviderError) throw err;
-    throw new ProviderError(`${name} provider did not respond`, name);
-  } finally {
-    clearTimeout(timer);
-  }
-}
 
-export const usingMocks = () => !(process.env.NIN_API_URL && process.env.NIN_API_KEY);
+const hasPossap = () => !!(process.env.POSSAP_BASE || process.env.NIN_API_URL);
+const hasRenmoney = () => !!(process.env.RENMONEY_AES_KEY && process.env.SOURCE_APP_ID);
+const hasNis = () => !!(process.env.NIS_BASE);
+
+export const usingMocks = () => !hasPossap();
 
 export async function lookupNin(nin: string): Promise<Lookup<Identity>> {
-  const raw = await call('nin', 'NIN_API_URL', 'NIN_API_KEY', { nin });
-  if (raw === null) return mockNin(nin);
-  if (raw.__notFound || !raw.data) return { found: false };
-  // TODO(provider): map the real response here.
-  return { found: true, data: { ...raw.data, idNumber: nin } as Identity };
+  if (!hasPossap()) return mockNin(nin);
+  return possapNinLookup(nin);
+}
+
+export async function lookupBvn(bvn: string, email?: string): Promise<Lookup<BvnRecord>> {
+  if (!hasRenmoney()) throw new ProviderError('Renmoney BVN provider is not configured. Set RENMONEY_AES_KEY and SOURCE_APP_ID.', 'renmoney');
+  return renmoneyBvnLookup(bvn, email);
 }
 
 export async function lookupPassport(number: string, dob: string): Promise<Lookup<Identity>> {
-  const raw = await call('passport', 'PASSPORT_API_URL', 'PASSPORT_API_KEY', { passport_number: number, dob });
-  if (raw === null) return mockPassport(number, dob);
-  if (raw.__notFound || !raw.data) return { found: false };
-  // TODO(provider): map the real response here.
-  return { found: true, data: { ...raw.data, idNumber: number } as Identity };
+  if (!hasNis()) return mockPassport(number, dob);
+  // NIS passport lookup requires a NIN as well; the caller in match/route.ts
+  // passes it via nisPassportLookup directly. This fallback uses the mock.
+  return mockPassport(number, dob);
+}
+
+/**
+ * NIN + Passport match via the NIS portal.
+ * Called from the match route when NIS is configured.
+ */
+export async function lookupNinPassport(nin: string, passport: string, dob: string): Promise<Lookup<Identity>> {
+  if (!hasNis()) return mockPassport(passport, dob);
+  return nisPassportLookup(nin, passport, dob);
 }
 
 export async function lookupTin(input: { nin?: string; rc?: string; type: string }): Promise<Lookup<TinRecord>> {
-  const raw = await call('tin', 'TIN_API_URL', 'TIN_API_KEY', input);
-  if (raw === null) return mockTin(input);
-  if (raw.__notFound || !raw.data) return { found: false };
-  // TODO(provider): map the real response here.
-  return { found: true, data: raw.data as TinRecord };
+  // TIN provider not yet configured — always use mock.
+  return mockTin(input);
 }

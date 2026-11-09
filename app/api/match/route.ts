@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { authed, json } from '@/lib/api';
 import { compareIdentities } from '@/lib/compare';
 import { maskTail } from '@/lib/crypto';
-import { lookupNin, lookupPassport } from '@/lib/providers';
+import { lookupNin, lookupPassport, lookupNinPassport } from '@/lib/providers';
 import type { Identity } from '@/lib/providers/types';
 import { runPaidCheck } from '@/lib/run';
 
@@ -40,7 +40,11 @@ export const POST = authed(async (req, user) => {
         missing = 'nin';
         return { found: false, reason: 'NIN date of birth does not match the record' };
       }
-      const passport = await lookupPassport(b.passportNumber, b.passportDob);
+      // When NIS is configured, use the portal's own NIN+passport flow.
+      // Otherwise fall back to the generic passport provider.
+      const passport = process.env.NIS_BASE
+        ? await lookupNinPassport(b.nin, b.passportNumber, b.passportDob)
+        : await lookupPassport(b.passportNumber, b.passportDob);
       if (!passport.found) {
         missing = 'passport';
         return { found: false, reason: 'Passport not found' };

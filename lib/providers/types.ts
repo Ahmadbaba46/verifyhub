@@ -13,6 +13,17 @@ export type Identity = {
 
 export type Lookup<T> = { found: true; data: T } | { found: false };
 
+export type BvnRecord = {
+  bvn: string;
+  firstName: string;
+  middleName: string;
+  lastName: string;
+  gender: string;
+  dateOfBirth: string;
+  phoneNumber: string;
+  address: string;
+};
+
 export type TinRecord = {
   tin: string;
   registeredName: string;

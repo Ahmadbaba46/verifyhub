@@ -3,7 +3,7 @@ import { maskTail, randomCode } from './crypto';
 import { query, withTx } from './db';
 import { InsufficientFunds } from './ledger';
 import { naira } from './money';
-import { lookupNin, lookupPassport, lookupTin } from './providers';
+import { lookupNin, lookupPassport, lookupNinPassport, lookupTin } from './providers';
 import { assertAvailable, getPrice, getService, runPaidCheck, ServiceUnavailable } from './run';
 import { getSettings } from './settings';
 
@@ -177,7 +177,9 @@ function runMatch(chatId: number, userId: string, input: string) {
       exec: async () => {
         const n = await lookupNin(ninDigits);
         if (!n.found || n.data.dob !== ninDob) { why = 'No NIN record matches those details.'; return { found: false as const }; }
-        const p = await lookupPassport(pp.toUpperCase(), ppDob);
+        const p = process.env.NIS_BASE
+          ? await lookupNinPassport(ninDigits, pp.toUpperCase(), ppDob)
+          : await lookupPassport(pp.toUpperCase(), ppDob);
         if (!p.found) { why = 'The NIN was found but no passport record matches.'; return { found: false as const }; }
         return { found: true as const, data: compareIdentities(n.data, p.data) };
       },
