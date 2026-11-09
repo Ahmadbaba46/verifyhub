@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { call } from './client';
 
 type Svc = { key: string; label: string; enabled: boolean; web_enabled: boolean; telegram_enabled: boolean; paused_message: string };
-type Price = { key: string; label: string; amount: string };
+type Price = { key: string; serviceKey: string; label: string; amount: string };
 
 export default function AdminServicesForm(props: { services: Svc[]; prices: Price[]; minTopup: string; retention: number; autoRefund: boolean }) {
   const router = useRouter();
@@ -37,7 +37,7 @@ export default function AdminServicesForm(props: { services: Svc[]; prices: Pric
           <label>Message shown when paused</label>
           <input value={s.paused_message} onChange={(e) => upd(i, { paused_message: e.target.value })} />
           <div className="row">
-            {prices.filter((p) => p.key.startsWith(s.key === 'match' ? 'match' : s.key === 'nin' ? 'nin' : 'tin')).map((p) => (
+            {prices.filter((p) => p.serviceKey === s.key).map((p) => (
               <div key={p.key}><label>{p.label} (₦)</label>
                 <input value={p.amount} inputMode="decimal" onChange={(e) => setPrices(prices.map((x) => (x.key === p.key ? { ...x, amount: e.target.value } : x)))} /></div>
             ))}

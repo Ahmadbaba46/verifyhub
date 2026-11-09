@@ -1,4 +1,4 @@
-import { Identity, Lookup, ProviderError, TinRecord } from './types';
+import { BvnRecord, Identity, Lookup, ProviderError, TinRecord } from './types';
 
 /**
  * Deterministic fake data so you can build and demo without provider keys.
@@ -29,6 +29,25 @@ export async function mockPassport(number: string, dob: string): Promise<Lookup<
   // One-letter spelling difference, to demonstrate a mismatch row.
   const middleName = number.endsWith('7') ? base.middleName.slice(0, -1) + 'x' : base.middleName;
   return { found: true, data: { ...base, middleName, dob: dob || base.dob, phone: undefined, stateOfOrigin: undefined, idNumber: number } };
+}
+
+export async function mockBvn(bvn: string): Promise<Lookup<BvnRecord>> {
+  if (bvn.endsWith('999')) throw new ProviderError('BVN provider is unavailable', 'bvn');
+  if (bvn.endsWith('000')) return { found: false };
+  const p = pick(bvn);
+  return {
+    found: true,
+    data: {
+      bvn,
+      firstName: p.firstName,
+      middleName: p.middleName,
+      lastName: p.surname,
+      gender: p.gender,
+      dateOfBirth: p.dob,
+      phoneNumber: p.phone ?? '',
+      address: `${p.stateOfOrigin ?? 'Lagos'} State, Nigeria`,
+    },
+  };
 }
 
 const TYPES_OFFICE: Record<string, string> = { Individual: 'Kano Metro', 'Business name': 'Ikeja', 'Limited company': 'Lagos Island', Partnership: 'Abuja Wuse', 'NGO / association': 'Abuja Garki' };

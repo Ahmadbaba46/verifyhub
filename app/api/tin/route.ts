@@ -39,6 +39,7 @@ export const POST = authed(async (req, user) => {
       // Remember how it was found: NIN lookups get a slip, RC lookups get a certificate.
       return r.found ? { found: true as const, data: { ...r.data, __via: nin ? 'nin' : 'rc' } } : r;
     },
+    free: user.role === 'admin',
   });
   if (out.notFound) return json({ found: false, message: 'No tax ID found for those details. You were not charged.' });
   if (out.error) return json({ error: out.error }, 502);

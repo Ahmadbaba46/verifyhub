@@ -43,37 +43,50 @@ export async function runPaidCheck<T>(args: {
   channel: Channel;
   inputHint: string;
   exec: () => Promise<ExecOutcome<T>>;
+  /** Admins run checks without a wallet charge (for testing). */
+  free?: boolean;
 }): Promise<{ checkId: string; reference: string; status: 'completed' | 'refunded'; data?: T; notFound?: boolean; error?: string; chargedKobo: number }> {
   const svc = await getService(args.serviceKey);
   assertAvailable(svc, args.channel);
-  const price = await getPrice(args.priceKey);
+  const price = args.free ? 0 : await getPrice(args.priceKey);
   const settings = await getSettings();
 
   const reference = 'VH-' + crypto.randomBytes(4).toString('hex').toUpperCase();
   const checkId = crypto.randomUUID();
 
-  const chargeEntry = await withTx(async (tx) => {
-    const entry = await charge(tx, {
-      userId: args.userId,
-      amountKobo: price,
-      reference,
-      key: `charge:${checkId}`,
-      meta: { service: args.serviceKey, price: args.priceKey },
-    });
-    await tx.query(
-      `INSERT INTO checks (id, user_id, service_key, channel, reference, input_hint, charge_entry_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [checkId, args.userId, args.serviceKey, args.channel, reference, args.inputHint, entry.entry.id],
+  // Free (admin) checks are recorded without taking money; everyone else is charged first.
+  let chargeEntryId: string | null = null;
+  if (args.free) {
+    await query(
+      `INSERT INTO checks (id, user_id, service_key, channel, reference, input_hint)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [checkId, args.userId, args.serviceKey, args.channel, reference, args.inputHint],
     );
-    return entry.entry;
-  });
+  } else {
+    const entry = await withTx(async (tx) => {
+      const e = await charge(tx, {
+        userId: args.userId,
+        amountKobo: price,
+        reference,
+        key: `charge:${checkId}`,
+        meta: { service: args.serviceKey, price: args.priceKey },
+      });
+      await tx.query(
+        `INSERT INTO checks (id, user_id, service_key, channel, reference, input_hint, charge_entry_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [checkId, args.userId, args.serviceKey, args.channel, reference, args.inputHint, e.entry.id],
+      );
+      return e.entry;
+    });
+    chargeEntryId = entry.id;
+  }
 
   const refund = async (status: 'refunded' | 'failed', error: string) => {
     await withTx(async (tx) => {
-      if (settings.auto_refund) await refundCharge(tx, chargeEntry.id, error);
+      if (chargeEntryId && settings.auto_refund) await refundCharge(tx, chargeEntryId, error);
       await tx.query(`UPDATE checks SET status = $2, error = $3, completed_at = now() WHERE id = $1`, [
         checkId,
-        settings.auto_refund ? 'refunded' : status,
+        chargeEntryId && !settings.auto_refund ? status : 'refunded',
         error,
       ]);
     });
@@ -116,7 +129,8 @@ export async function loadCheck<T = unknown>(userId: string, checkId: string) {
  * Pay for a document (slip/certificate) attached to a completed check. Charged once per check:
  * downloading it again is free.
  */
-export async function buyDocument(args: { userId: string; checkId: string; priceKey: string; docKey: string }) {
+export async function buyDocument(args: { userId: string; checkId: string; priceKey: string; docKey: string; free?: boolean }) {
+  if (args.free) return; // admins get documents free
   const price = await getPrice(args.priceKey);
   await withTx(async (tx) => {
     await charge(tx, {

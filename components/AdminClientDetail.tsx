@@ -3,7 +3,8 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { call } from './client';
 
-type Prices = { nin: string; match: string; tin: string };
+type Prices = { nin: string; bvn: string; match: string; tin: string };
+const SVC_LABELS: Record<string, string> = { nin: 'NIN validation', bvn: 'BVN validation', match: 'NIN & Passport match', tin: 'TIN finder' };
 type Key = { id: string; name: string; env: string; display: string; allowedIps: string[]; status: string; rotated: boolean; lastUsed: string | null };
 type Props = {
   id: string; name: string; email: string; status: 'pending' | 'approved' | 'suspended';
@@ -92,9 +93,9 @@ export default function AdminClientDetail(p: Props) {
           <table>
             <thead><tr><th>Service</th><th>List price (₦)</th><th>Agreed price (₦)</th></tr></thead>
             <tbody>
-              {(['nin', 'match', 'tin'] as const).map((s) => (
+              {(['nin', 'bvn', 'match', 'tin'] as const).map((s) => (
                 <tr key={s}>
-                  <td><strong>{s === 'nin' ? 'NIN validation' : s === 'match' ? 'NIN & Passport match' : 'TIN finder'}</strong></td>
+                  <td><strong>{SVC_LABELS[s]}</strong></td>
                   <td className="muted">{p.listPrices[s]}</td>
                   <td><input style={{ maxWidth: 140 }} inputMode="decimal" value={prices[s]} placeholder={p.listPrices[s]} onChange={(e) => setPrices({ ...prices, [s]: e.target.value })} /></td>
                 </tr>

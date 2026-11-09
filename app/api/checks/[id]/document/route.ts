@@ -29,7 +29,7 @@ export const POST = (req: Request, ctx: Ctx) =>
     const { doc } = z.object({ doc: Doc }).parse(await req.json());
     const p = await prepare(user.id, id, doc);
     if (p.error) return p.error;
-    await buyDocument({ userId: user.id, checkId: id, priceKey: p.spec.priceKey, docKey: doc });
+    await buyDocument({ userId: user.id, checkId: id, priceKey: p.spec.priceKey, docKey: doc, free: user.role === 'admin' });
     return json({ ok: true, url: `/api/checks/${id}/document?doc=${doc}` });
   })(req);
 
@@ -38,8 +38,10 @@ export const GET = (req: Request, ctx: Ctx) =>
   authed(async (r, user) => {
     const { id } = await ctx.params;
     const doc = Doc.parse(new URL(r.url).searchParams.get('doc'));
-    const paid = await query('SELECT 1 FROM ledger_entries WHERE idempotency_key = $1 AND user_id = $2', [`${doc}:${id}`, user.id]);
-    if (!paid.rowCount) return json({ error: 'Buy this document first' }, 402);
+    if (user.role !== 'admin') {
+      const paid = await query('SELECT 1 FROM ledger_entries WHERE idempotency_key = $1 AND user_id = $2', [`${doc}:${id}`, user.id]);
+      if (!paid.rowCount) return json({ error: 'Buy this document first' }, 402);
+    }
     const p = await prepare(user.id, id, doc);
     if (p.error) return p.error;
     const { __via, ...data } = p.c.data as Record<string, unknown>;

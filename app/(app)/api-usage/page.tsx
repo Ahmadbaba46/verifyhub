@@ -6,8 +6,8 @@ import { naira } from '@/lib/money';
 
 export const dynamic = 'force-dynamic';
 
-const LIST_KEY: Record<string, string> = { nin: 'nin_validate', match: 'match_check', tin: 'tin_lookup' };
-const SVC_LABEL: Record<string, string> = { nin: 'NIN validation', match: 'NIN & Passport match', tin: 'TIN finder' };
+const LIST_KEY: Record<string, string> = { nin: 'nin_validate', bvn: 'bvn_validate', match: 'match_check', tin: 'tin_lookup' };
+const SVC_LABEL: Record<string, string> = { nin: 'NIN validation', bvn: 'BVN validation', match: 'NIN & Passport match', tin: 'TIN finder' };
 
 const OUTCOME: Record<string, { label: string; cls: string }> = {
   ok: { label: 'Charged', cls: '' },
@@ -101,7 +101,7 @@ export default async function Page() {
           <table>
             <thead><tr><th>Service</th><th>Billed</th><th>Your rate</th><th>List price</th><th>Spent</th></tr></thead>
             <tbody>
-              {['nin', 'match', 'tin'].map((s) => {
+              {['nin', 'bvn', 'match', 'tin'].map((s) => {
                 const row = svc.find((x) => x.service_key === s);
                 const list = listKobo[LIST_KEY[s]] ?? 0;
                 const yours = rate(s);

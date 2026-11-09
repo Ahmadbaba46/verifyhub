@@ -7,15 +7,17 @@ export default async function Page() {
   const user = await requireUser();
   const [{ rows: svc }, { rows: recent }] = await Promise.all([
     query(`SELECT s.key, s.label, s.description, s.enabled, s.web_enabled, p.amount_kobo FROM services s
-           JOIN prices p ON p.service_key = s.key AND p.key IN ('nin_validate','match_check','tin_lookup') ORDER BY s.sort, s.key`),
+           JOIN prices p ON p.service_key = s.key AND p.key IN ('nin_validate','bvn_validate','match_check','tin_lookup') ORDER BY s.sort, s.key`),
     query(`SELECT reference, status, input_hint, created_at FROM checks WHERE user_id = $1 ORDER BY created_at DESC LIMIT 5`, [user.id]),
   ]);
-  const href: Record<string, string> = { nin: '/nin', match: '/match', tin: '/tin' };
+  const href: Record<string, string> = { nin: '/nin', bvn: '/bvn', match: '/match', tin: '/tin' };
   return (
     <>
       <h1>Hello, {user.name.split(' ')[0]}</h1>
       <p className="muted">Wallet balance <b>{naira(user.balance_kobo)}</b> · Tier {user.tier}</p>
-      {user.balance_kobo < 50000 && <div className="promo">Your balance is low. <Link href="/wallet">Fund your wallet</Link> to keep running checks.</div>}
+      {user.role === 'admin'
+        ? <div className="promo">You&rsquo;re an admin — checks run free for testing, no wallet funding needed.</div>
+        : user.balance_kobo < 50000 && <div className="promo">Your balance is low. <Link href="/wallet">Fund your wallet</Link> to keep running checks.</div>}
       <div className="grid" style={{ marginTop: 16 }}>
         {svc.map((s) => (
           <div className="card" key={s.key}>

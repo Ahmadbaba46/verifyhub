@@ -2,7 +2,7 @@ import { query } from './db';
 import { getSettings } from './settings';
 import { ClientRow } from './apirun';
 
-export const SERVICES = ['nin', 'match', 'tin'] as const;
+export const SERVICES = ['nin', 'bvn', 'match', 'tin'] as const;
 
 export async function getClient(userId: string): Promise<ClientRow | null> {
   const { rows } = await query<ClientRow>('SELECT user_id, status, rpm_limit, daily_cap_kobo FROM api_clients WHERE user_id = $1', [userId]);

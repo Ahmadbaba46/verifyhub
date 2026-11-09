@@ -8,7 +8,7 @@ import { naira } from '@/lib/money';
 
 export const dynamic = 'force-dynamic';
 
-const LIST_KEY: Record<string, string> = { nin: 'nin_validate', match: 'match_check', tin: 'tin_lookup' };
+const LIST_KEY: Record<string, string> = { nin: 'nin_validate', bvn: 'bvn_validate', match: 'match_check', tin: 'tin_lookup' };
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   await requireAdmin();
@@ -37,7 +37,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   for (const r of perSvc) billedBySvc[r.service_key] = r.billed;
 
   const toN = (k: number) => String(k / 100);
-  const discount = (['nin', 'match', 'tin'] as const).reduce((a, s) => {
+  const discount = (['nin', 'bvn', 'match', 'tin'] as const).reduce((a, s) => {
     const list = listKobo[LIST_KEY[s]] ?? 0;
     const paid = agreedKobo[s] ?? list;
     return a + Math.max(list - paid, 0) * (billedBySvc[s] ?? 0);
@@ -52,8 +52,8 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         email={c.email}
         status={c.status}
         balance={naira(c.balance_kobo)}
-        listPrices={{ nin: toN(listKobo.nin_validate ?? 0), match: toN(listKobo.match_check ?? 0), tin: toN(listKobo.tin_lookup ?? 0) }}
-        agreedPrices={{ nin: agreedKobo.nin != null ? toN(agreedKobo.nin) : '', match: agreedKobo.match != null ? toN(agreedKobo.match) : '', tin: agreedKobo.tin != null ? toN(agreedKobo.tin) : '' }}
+        listPrices={{ nin: toN(listKobo.nin_validate ?? 0), bvn: toN(listKobo.bvn_validate ?? 0), match: toN(listKobo.match_check ?? 0), tin: toN(listKobo.tin_lookup ?? 0) }}
+        agreedPrices={{ nin: agreedKobo.nin != null ? toN(agreedKobo.nin) : '', bvn: agreedKobo.bvn != null ? toN(agreedKobo.bvn) : '', match: agreedKobo.match != null ? toN(agreedKobo.match) : '', tin: agreedKobo.tin != null ? toN(agreedKobo.tin) : '' }}
         bonus={c.bonus}
         limits={{ rpm_limit: c.rpm_limit, max_keys: c.max_keys, daily_cap: c.daily_cap_kobo != null ? toN(Number(c.daily_cap_kobo)) : '', require_ip_allowlist: c.require_ip_allowlist, allow_test: c.allow_test }}
         note={c.note}

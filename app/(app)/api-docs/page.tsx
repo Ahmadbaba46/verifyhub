@@ -41,6 +41,7 @@ export default async function Page() {
             <thead><tr><th>Endpoint</th><th>Does</th><th>Body</th></tr></thead>
             <tbody>
               <tr><td className="mono" style={{ fontSize: 13 }}>POST /v1/nin/validate</td><td>Details on record for a NIN</td><td className="mono" style={{ fontSize: 12 }}>nin</td></tr>
+              <tr><td className="mono" style={{ fontSize: 13 }}>POST /v1/bvn/validate</td><td>Details linked to a BVN</td><td className="mono" style={{ fontSize: 12 }}>bvn</td></tr>
               <tr><td className="mono" style={{ fontSize: 13 }}>POST /v1/match</td><td>Looks up NIN then passport, compares them</td><td className="mono" style={{ fontSize: 12 }}>nin, nin_dob, passport_number, passport_dob</td></tr>
               <tr><td className="mono" style={{ fontSize: 13 }}>POST /v1/tin/lookup</td><td>Finds a tax ID by NIN or RC number</td><td className="mono" style={{ fontSize: 12 }}>taxpayer_type, and nin or rc</td></tr>
               <tr><td className="mono" style={{ fontSize: 13 }}>GET /v1/balance</td><td>Your wallet balance (free)</td><td className="muted">none</td></tr>

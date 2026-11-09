@@ -1,5 +1,5 @@
-import { Identity, Lookup, ProviderError, TinRecord, BvnRecord } from './types';
-import { mockNin, mockPassport, mockTin } from './mock';
+import { Identity, Lookup, TinRecord, BvnRecord } from './types';
+import { mockBvn, mockNin, mockPassport, mockTin } from './mock';
 import { possapNinLookup } from './possap';
 import { renmoneyBvnLookup } from './renmoney';
 import { nisPassportLookup } from './nis';
@@ -23,7 +23,7 @@ export async function lookupNin(nin: string): Promise<Lookup<Identity>> {
 }
 
 export async function lookupBvn(bvn: string, email?: string): Promise<Lookup<BvnRecord>> {
-  if (!hasRenmoney()) throw new ProviderError('Renmoney BVN provider is not configured. Set RENMONEY_AES_KEY and SOURCE_APP_ID.', 'renmoney');
+  if (!hasRenmoney()) return mockBvn(bvn); // falls back to sample data until Renmoney is configured
   return renmoneyBvnLookup(bvn, email);
 }
 

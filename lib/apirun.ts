@@ -7,7 +7,7 @@ import { assertAvailable, ExecOutcome, getPrice, getService, ServiceUnavailable 
 import { getSettings } from './settings';
 
 /** service key -> the list price key it falls back to when the client has no agreed price. */
-const LIST_PRICE_KEY: Record<string, string> = { nin: 'nin_validate', match: 'match_check', tin: 'tin_lookup' };
+const LIST_PRICE_KEY: Record<string, string> = { nin: 'nin_validate', bvn: 'bvn_validate', match: 'match_check', tin: 'tin_lookup' };
 
 export type ClientRow = {
   user_id: string;

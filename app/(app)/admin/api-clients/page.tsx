@@ -5,7 +5,7 @@ import { naira } from '@/lib/money';
 
 export const dynamic = 'force-dynamic';
 
-const LIST_KEY: Record<string, string> = { nin: 'nin_validate', match: 'match_check', tin: 'tin_lookup' };
+const LIST_KEY: Record<string, string> = { nin: 'nin_validate', bvn: 'bvn_validate', match: 'match_check', tin: 'tin_lookup' };
 const statusPill = (s: string) => (s === 'approved' ? 'pill' : s === 'pending' ? 'pill warn' : 'pill bad');
 
 function bonusLabel(b: any): string {
@@ -65,13 +65,13 @@ export default async function Page() {
       <div className="card">
         <div className="scroll">
           <table>
-            <thead><tr><th>Client</th><th>Access</th><th>Rates (NIN / Match / TIN)</th><th>Bonus</th><th>Requests 30d</th><th>Revenue 30d</th></tr></thead>
+            <thead><tr><th>Client</th><th>Access</th><th>Rates (NIN / BVN / Match / TIN)</th><th>Bonus</th><th>Requests 30d</th><th>Revenue 30d</th></tr></thead>
             <tbody>
               {clients.map((c) => (
                 <tr key={c.user_id}>
                   <td><Link href={`/admin/api-clients/${c.user_id}`} style={{ fontWeight: 700 }}>{c.name}</Link><div className="hint">{c.email}</div></td>
                   <td><span className={statusPill(c.status)}>{c.status}</span></td>
-                  <td style={{ fontSize: 13 }}>{c.status === 'pending' ? <span className="muted">Not set</span> : `${naira(rate(c.user_id, 'nin'))} / ${naira(rate(c.user_id, 'match'))} / ${naira(rate(c.user_id, 'tin'))}`}</td>
+                  <td style={{ fontSize: 13 }}>{c.status === 'pending' ? <span className="muted">Not set</span> : `${naira(rate(c.user_id, 'nin'))} / ${naira(rate(c.user_id, 'bvn'))} / ${naira(rate(c.user_id, 'match'))} / ${naira(rate(c.user_id, 'tin'))}`}</td>
                   <td style={{ fontSize: 13 }}>{bonusLabel(c.bonus)}</td>
                   <td>{c.requests.toLocaleString()}</td>
                   <td><strong>{naira(c.revenue)}</strong></td>

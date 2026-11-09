@@ -5,7 +5,7 @@ import { naira } from '@/lib/money';
 
 export const dynamic = 'force-dynamic';
 
-const SVC_LABEL: Record<string, string> = { nin: 'NIN lookup', match: 'Passport match', tin: 'TIN lookup' };
+const SVC_LABEL: Record<string, string> = { nin: 'NIN lookup', bvn: 'BVN lookup', match: 'Passport match', tin: 'TIN lookup' };
 const OUTCOME_LABEL: Record<string, string> = {
   not_found: 'Not found (404)', invalid: 'Invalid input (422)', provider_error: 'Provider error (502)',
   insufficient: 'Wallet too low (402)', rate_limited: 'Rate limited (429)', ip_blocked: 'IP blocked (403)', forbidden: 'Forbidden (403)', unavailable: 'Service paused (503)',
